@@ -1,0 +1,87 @@
+#code: language=ansible
+
+- name: Get DLC UUID
+  ansible.builtin.command:
+    cmd: "ls /etc/dlc/instance"
+  register: dlc_uuid
+
+- name: Print DLC UUID
+  ansible.builtin.debug:
+    msg: "{{ dlc_uuid.stdout }}"
+
+- name: Get DLC Log source configuration
+  ansible.builtin.uri:
+    url: "https://{{ qradar_ip }}:{{ qradar_port }}/api/config/event_sources/log_source_management/log_sources?filter=id%3D{{ dlc_logsource_id }}"
+    headers:
+      SEC: "{{ qradar_token }}"
+      Version: "20.0"
+      Accept: "application/json"
+    validate_certs: "false"
+  register: log_sources
+  delegate_to: consola.qradar.lab
+
+- name: Save Log source as fact
+  ansible.builtin.set_fact:
+    log_source: "{{ log_sources.json[0] }}"
+
+
+- name: Save Log source params as fact
+  ansible.builtin.set_fact:
+    log_source_param: "{{ log_sources.json[0].protocol_parameters }}"
+
+- name: Modify log source params
+  ansible.utils.update_fact:
+    updates:
+      - path: log_source_param[{{idx}}].value
+        value: "{% if item.id == 82015 %}{{item.value}}, \n{{ dlc_uuid.stdout }}{% else %}{{item.value}}{% endif %}"
+  loop: "{{log_source_param}}"
+  loop_control:
+    index_var: idx
+  when: item.id == 82015
+  register: param_updated
+
+- name: Modify log source
+  ansible.utils.update_fact:
+    updates:
+      - path: log_source.protocol_parameters
+        value: "{% for item in param_updated.results %}{% if item.changed %}{{item.log_source_param}}{%endif %}{% endfor %}"
+  register: logsource_updated
+  
+- name: Upddate DLC Log source configuration
+  ansible.builtin.uri:
+    url: "https://{{ qradar_ip }}:{{ qradar_port }}/api/config/event_sources/log_source_management/log_sources/{{ dlc_logsource_id }}"
+    method: POST
+    headers:
+      SEC: "{{ qradar_token }}"
+      Version: "20.0"
+      Accept: "application/json"
+    validate_certs: "false"
+    body_format: json
+    body: "{{logsource_updated.log_source}}"
+  register: log_source
+  delegate_to: consola.qradar.lab
+
+- name: Get DLC version
+  ansible.builtin.command:
+    cmd: "/opt/ibm/si/services/dlc/current/script/version.sh"
+  register: dlc_version
+
+- name: Print DLC Version
+  ansible.builtin.debug:
+    msg: "{{ dlc_version.stdout | regex_search('(\\d+\\.\\d+\\.\\d+)$') }}"
+
+- name: Register DLC agent
+  ansible.builtin.uri:
+    url: "https://{{ qradar_ip }}:{{ qradar_port }}/api/config/event_sources/disconnected_log_collectors"
+    method: POST
+    headers:
+      SEC: "{{ qradar_token }}"
+      Version: "20.0"
+      Accept: "application/json"
+      Content-Type: "application/json"
+    validate_certs: "false"
+    body_format: json
+    body: "{'description': 'DLC registered by Ansible', 'name': '{{ansible_nodename}}', 'protocol': 'TLS', 'uuid': '{{ dlc_uuid.stdout }}', 'version': '{{ dlc_version.stdout | regex_search('(\\d+\\.\\d+\\.\\d+)$') }}'}"
+  delegate_to: consola.qradar.lab
+  register: dlc_register_status
+  failed_when: dlc_register_status.status != 201

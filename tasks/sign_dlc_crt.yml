@@ -1,0 +1,68 @@
+# code: language=ansible
+
+- name: Get DLC UUID
+  ansible.builtin.command:
+    cmd: "ls /etc/dlc/instance"
+  register: dlc_uuid
+
+- name: Generar certificate signature request
+  ansible.builtin.expect:
+    echo: yes
+    command: /opt/ibm/si/services/dlc/current/script/generateCertificate.sh -csr -2k
+    responses:
+      Enter 2-letter Country Code\:: "{{ Country_Code }}"
+      Enter State or Province Name\:: "{{ State_Province_Name }}"
+      Enter City Name\:: "{{ City_Name }}"
+      Enter Organization Name\:: "{{ Organization_Name }}"
+      Enter Organization Unit Name\:: "{{ Organization_Unit_Name }}"
+
+- name: Send to sign DLC certificate
+  ansible.builtin.fetch:
+    flat: true
+    src: "/opt/ibm/si/services/dlc/keystore/{{ dlc_uuid.stdout }}/dlc-client.csr"
+    dest: "/tmp/temp_csr/{{ dlc_uuid.stdout }}-dlc-client.csr"
+
+- name: Import DLC Certificate signature request
+  ansible.builtin.command:
+    chdir: "/root/DLC-CA"
+    cmd: "/root/DLC-CA/EasyRSA-3.1.7/easyrsa import-req /tmp/temp_csr/{{ dlc_uuid.stdout }}-dlc-client.csr {{ dlc_uuid.stdout }}.dlc-client"
+  delegate_to: ansible144.ibmsecurity.lab
+
+- name: Sign DLC Certificate signature request
+  ansible.builtin.expect:
+    chdir: "/root/DLC-CA"
+    command: "/root/DLC-CA/EasyRSA-3.1.7/easyrsa sign-req client {{ dlc_uuid.stdout }}.dlc-client"
+    responses:
+      Confirm request details\:: "yes"
+      Enter pass phrase for /root/DLC-CA/pki/private/ca.key\:: "{{ dlc_ca_password}}"
+  delegate_to: ansible144.ibmsecurity.lab
+
+- name: Copy DLC client certificate to temporal
+  ansible.builtin.command:
+    cmd: " cp /root/DLC-CA/pki/issued/{{ dlc_uuid.stdout }}.dlc-client.crt /tmp/temp_csr/"
+  delegate_to: ansible144.ibmsecurity.lab
+
+- name: Change DLC client certificate permissions
+  ansible.builtin.file:
+    group: "awx"
+    mode: "u=rw,g=r"
+    path: "/tmp/temp_csr/{{ dlc_uuid.stdout }}.dlc-client.crt"
+  delegate_to: ansible144.ibmsecurity.lab
+
+- name: Deploy DLC client certificate
+  ansible.builtin.copy:
+    src: "/tmp/temp_csr/{{ dlc_uuid.stdout }}.dlc-client.crt"
+    dest: "/opt/ibm/si/services/dlc/keystore/{{ dlc_uuid.stdout }}/" 
+
+- name: Clean temporal
+  ansible.builtin.shell:
+    cmd: "rm -f /tmp/temp_csr/*"
+  delegate_to: ansible144.ibmsecurity.lab
+
+- name: Import DLC certificate
+  ansible.builtin.expect:
+    command: "/opt/ibm/si/services/dlc/current/script/generateCertificate.sh -p12 /opt/ibm/si/services/dlc/keystore/{{ dlc_uuid.stdout }}/{{ dlc_uuid.stdout }}.dlc-client.crt"
+    responses:
+      Enter Export Password\:: "{{ dlc_crt_password }}"
+      Verifying \- Enter Export Password\:: "{{ dlc_crt_password }}"
+

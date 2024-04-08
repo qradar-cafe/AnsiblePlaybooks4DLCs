@@ -1,0 +1,18 @@
+# code: language=ansible
+- name: Change DLC EPS limit
+  hosts: "{{ dlcs }}"
+  vars_files:
+    - ./config/config.yml
+
+  tasks:
+    - name: Modify DLC configuration file 
+      ansible.builtin.lineinfile:
+        path: "/opt/ibm/si/services/dlc/conf/config.json"
+        regexp: '.*\"EPS\"\:.*'
+        line: '    "EPS": {{ dlc_eps }},'
+
+
+    - name: Restart DLC service to apply changes  
+      ansible.builtin.service:
+        name: "dlc"
+        state: "restarted"

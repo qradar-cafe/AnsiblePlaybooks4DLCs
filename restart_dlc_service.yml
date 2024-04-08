@@ -1,0 +1,12 @@
+# code: language=ansible
+
+- name: Restart DLC Service
+  hosts: "{{ dlcs }}"
+  vars_files:
+    - ./config/config.yml
+
+  tasks:
+    - name: Restart DLC service
+      ansible.builtin.service:
+        name: dlc
+        state: restarted

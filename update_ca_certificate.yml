@@ -1,0 +1,9 @@
+# code: language=ansible
+
+- name: Update DLC CA certificate in DLC host
+  hosts: "{{ dlcs }}"
+  vars_files:
+    - ./config/config.yml
+  tasks:
+    - name: Deploy CA certificate
+      import_tasks: "{{tasks_dir}}deploy_ca_certificate.yml"

@@ -1,0 +1,12 @@
+# code languaje=ansible
+
+- name: Collect DLC Support Logs
+  hosts: "{{ dlcs }}"
+  vars_files:
+    - ./config/config.yml
+
+  tasks:
+    - name: Verify DLC is not installed
+      ansible.builtin.import_tasks: "{{ tasks_dir }}dlc_support_logs.yml"
+
+

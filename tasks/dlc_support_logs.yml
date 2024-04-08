@@ -1,0 +1,17 @@
+# code: language=ansible
+
+- name: Create zip file with Logs
+  ansible.builtin.shell:
+    cmd: "tar -cvf dlc-{{ ansible_date_time.iso8601_basic_short }}.tar /var/log; tar -rf dlc.tar /opt/ibm/si/services/dlc/conf/*; ls -lsRa /opt/ibm/si/services/dlc/keystore/ > /root/keystore_contents.txt; for file in $(find /opt/ibm/si/services/dlc/keystore -name *.csr); do ls -l $file >> /root/keystore_contents.txt; cat $file >> /root/keystore_contents.txt; done; /opt/ibm/si/services/dlc/current/script/jmx.sh -p 7787  > /root/mbeans.txt; ip address > /root/ifconfig.txt; ip route > /root/iproute.txt; df -h> /root/df_sh.txt; ls -lR /store >> /root/df_sh.txt; /usr/bin/firewall-cmd --list-all > /root/firewalld.txt; mount > /root/mount.txt; netstat -toupan > /root/netstat_output.txt; tar -rf dlc.tar /root/*.txt; if [ -d /store/ec ]; then tar -rf dlc.tar /store/ec/*; fi; gzip -f dlc-{{ ansible_date_time.iso8601_basic_short }}.tar"
+
+- name: Collect  log tar file
+  ansible.builtin.fetch:
+    src: "/root/dlc-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
+    dest: "/tmp/dlc_support"
+  register: support_file
+
+- name: Post Logs to indicent
+  when:  incident_id is defined
+  delegate_to: ansible144.ibmsecurity.lab
+  ansible.builtin.shell:
+    cmd: "python3 /var/lib/awx/projects/DLCs/files/post_dlc_support_file.py {{ incident_id }} {{ support_file.dest }}"

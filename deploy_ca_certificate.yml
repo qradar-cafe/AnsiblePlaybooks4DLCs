@@ -1,0 +1,12 @@
+# code: language=ansible
+
+- name: Copy CA cert to DLC Host
+  ansible.builtin.copy:
+    src: "{{ files_dir }}{{ ca_file }}"
+    dest: "/etc/pki/ca-trust/source/anchors/dlc-ca.crt"
+    force: true
+
+- name: Update trusted CA
+  ansible.builtin.command:
+    cmd: "update-ca-trust"
+        

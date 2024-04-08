@@ -1,0 +1,26 @@
+# code: language=ansible
+
+- name: Check Java in host
+  ansible.builtin.stat:
+    path: "/opt/ibm/java-x86_64-80/bin/java"
+  register: java_installed
+
+- name: Copy Java to host
+  ansible.builtin.copy:
+    src: "{{ files_dir }}{{ java_file }}"
+    dest: "/tmp"
+    mode: "a+x"
+  when: java_installed.stat.exists == false
+
+- name: Create response file for Java installation
+  ansible.builtin.copy:
+    dest: "/tmp/responsefile.txt"
+    content: |
+      LICENSE_ACCEPTED=TRUE
+      INSTALLER_UI=silent
+  when: java_installed.stat.exists == false
+
+- name: Install Java
+  ansible.builtin.command:
+    cmd: "/tmp/{{ java_file }} -f /tmp/responsefile.txt"
+  when: java_installed.stat.exists == false

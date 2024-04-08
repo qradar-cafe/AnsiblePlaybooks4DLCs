@@ -1,0 +1,51 @@
+#code language=ansible
+
+- name: Upgrade DLC
+  hosts: "{{ dlcs }}"
+  vars_files:
+    - ./config/config.yml
+  tasks: 
+    - name: Copy DLC rpm
+      ansible.builtin.import_tasks: "{{tasks_dir}}install_dlc_service.yml"
+
+    - name: Get DLC version
+      ansible.builtin.command:
+        cmd: "/opt/ibm/si/services/dlc/current/script/version.sh"
+      register: dlc_version
+
+    - name: Print DLC Version
+      ansible.builtin.debug:
+        msg: "{{ dlc_version.stdout | regex_search('(\\d+\\.\\d+\\.\\d+)$') }}"
+    
+    - name: Get DLC UUID
+      ansible.builtin.command:
+        cmd: "ls /etc/dlc/instance"
+      register: dlc_uuid
+
+    - name: Get DLC definition
+      ansible.builtin.uri:
+        url: "https://{{ qradar_ip }}:{{ qradar_port }}/api/config/event_sources/disconnected_log_collectors?fields=id%2C%20name%2C%20protocol%2C%20version%2C%20uuid%2C%20description&filter=uuid%3D%22{{ dlc_uuid.stdout }}%22"
+        method: GET
+        headers:
+          SEC: "{{ qradar_token }}"
+          Version: "20.0"
+          Accept: "application/json"
+        validate_certs: "false"
+      delegate_to: consola.qradar.lab
+      register: dlc_register_current
+
+    - name: Register DLC agent
+      ansible.builtin.uri:
+        url: "https://{{ qradar_ip }}:{{ qradar_port }}/api/config/event_sources/disconnected_log_collectors/{{dlc_register_current.json[0].id}}"
+        method: POST
+        headers:
+          SEC: "{{ qradar_token }}"
+          Version: "20.0"
+          Accept: "application/json"
+          Content-Type: "application/json"
+        validate_certs: "false"
+        body_format: json
+        body: "{'description': 'DLC registered by Ansible', 'name': '{{ansible_nodename}}', 'protocol': 'TLS', 'uuid': '{{ dlc_uuid.stdout }}', 'version': '{{ dlc_version.stdout | regex_search('(\\d+\\.\\d+\\.\\d+)$') }}'}"
+      delegate_to: consola.qradar.lab
+      register: dlc_register_status
+      failed_when: dlc_register_status.status not in ( 201, 200)

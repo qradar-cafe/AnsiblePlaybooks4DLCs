@@ -1,0 +1,38 @@
+# code: language=ansible
+- name: DLC status info
+  hosts: "{{ dlcs }}"
+  vars_files: 
+    - ./config/config.yml
+
+  tasks:
+    - name: Collect DLC logs
+      ansible.builtin.import_tasks: "{{ tasks_dir}}dlc_support_logs.yml"
+
+    - name: DLC service status
+      ansible.builtin.service:
+        name: "dlc"
+      register: dlc_status_info
+
+    - name: Print DLC Service status
+      ansible.builtin.debug:
+        msg: "Service status: {{ dlc_status_info.status.SubState   }}\nLast status change: {{ dlc_status_info.status.StateChangeTimestamp }}"
+
+    - name: Last 100 dlc.log file
+      ansible.builtin.shell:
+        cmd: "tail -100 /var/log/dlc/dlc.log"
+      register: dlc_tail_log
+
+    - name: Print DLC log file
+      ansible.builtin.debug:
+        msg: "{{ dlc_tail_log.stdout }}"
+
+    - name: Last 100 dlc.error file
+      ansible.builtin.shell:
+        cmd: "tail -100 /var/log/dlc/dlc.error"
+      register: dlc_tail_error
+
+    - name: Print DLC error file
+      ansible.builtin.debug:
+        msg: "{{ dlc_tail_error.stdout }}"
+    
+        

@@ -1,0 +1,50 @@
+# code: language=ansible
+
+- name: Deploy DLC in a new DLC host
+  hosts: "{{ dlcs }}"
+  vars_files:
+    - ./config/config.yml
+  tasks:
+  
+    - name: Verify DLC is not installed
+      ansible.builtin.import_tasks: "{{ tasks_dir}}check_dlc_is_installed.yml"
+
+    - name: Deploy CA certificate
+      ansible.builtin.import_tasks: "{{tasks_dir}}deploy_ca_certificate.yml"
+      when: yum_dlc.results == []
+
+    - name: Install Java
+      ansible.builtin.import_tasks: "{{ tasks_dir }}install_java.yml"
+      when: yum_dlc.results == []
+
+    - name: Install DLC service
+      ansible.builtin.import_tasks: "{{ tasks_dir }}install_dlc_service.yml"
+      when: yum_dlc.results == []
+
+    - name: Sign dlc certificate
+      ansible.builtin.import_tasks: "{{ tasks_dir }}sign_dlc_crt.yml"  
+      when: yum_dlc.results == []  
+
+    - name: Configure DLC service
+      ansible.builtin.import_tasks: "{{ tasks_dir }}configure_dlc.yml"   
+      when: yum_dlc.results == []
+
+- name: Update DLC log source
+  hosts: "{{ dlcs }}"
+  serial: 1
+  vars_files:
+    - ./config/config.yml
+  tasks:
+    - name: Update QRadar Log source
+      ansible.builtin.import_tasks: "{{ tasks_dir }}update_qradar_logsource.yml"
+      when: yum_dlc.results == []
+
+        
+
+
+
+    
+
+
+
+       

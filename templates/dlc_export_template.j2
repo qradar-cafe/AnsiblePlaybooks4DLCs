@@ -1,0 +1,10 @@
+{% set dlc_configuration = {
+    'dlc': dlc_definition.json[0],
+    'generated_on': now().strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+    'encryption': {
+        'algorithm': 'AES128',
+        'salt': dlc_logsources.x_qrd_encryption_salt },
+    'log_sources': dlc_logsources.json,
+    'protocol_types': protocol_types.json}
+        %}
+{{ dlc_configuration }}

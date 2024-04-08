@@ -1,0 +1,12 @@
+# code: language=ansible
+
+- name: Check DLC
+  ansible.builtin.yum:
+    list: "dlc-service"
+  register: yum_dlc
+
+- name: Mostrar yum_dlc
+  ansible.builtin.debug:
+    msg: "{{ yum_dlc }}"
+  when: yum_dlc.results != []
+    

@@ -1,0 +1,59 @@
+# code: language=ansible
+
+- name: Update DLC log source configuration
+  hosts: "{{ dlcs }}"
+  vars_files:
+  - ./config/config.yml
+  
+  tasks:
+    - name: Collect DLC definition
+      ansible.builtin.uri:
+        url: "https://{{ qradar_ip }}:{{ qradar_port }}/api/config/event_sources/disconnected_log_collectors?fields=uuid%2Cname%2Cid%2Cdescription%2Cversion&filter=name%3D%22{{ ansible_nodename }}%22"
+        method: GET
+        headers:
+          SEC: "{{ qradar_token }}"
+          Version: "20.0"
+          Accept: "application/json"
+        validate_certs: "false"
+      delegate_to: consola.qradar.lab
+      register: dlc_definition
+
+    - name: Collect Protocol Types definition
+      ansible.builtin.uri:
+        url: "https://{{ qradar_ip }}:{{ qradar_port }}/api/config/event_sources/log_source_management/protocol_types"
+        method: GET
+        headers:
+          SEC: "{{ qradar_token }}"
+          Version: "20.0"
+          Accept: "application/json"
+        validate_certs: "false"
+      delegate_to: consola.qradar.lab
+      register: protocol_types
+
+    - name: Collect DLC Log Sources
+      ansible.builtin.uri:
+        url: "https://{{ qradar_ip }}:{{ qradar_port }}/api/config/event_sources/log_source_management/log_sources?filter=disconnected_log_collector_id%3D{{ dlc_definition.json[0].id }}"
+        method: GET
+        headers:
+          SEC: "{{ qradar_token }}"
+          Version: "20.0"
+          Accept: "application/json"
+          x-qrd-encryption-algorithm: "AES128"
+          x-qrd-encryption-password: "{{ dlc_export_password }}"
+        validate_certs: "false"
+      delegate_to: consola.qradar.lab
+      register: dlc_logsources
+
+    - name: Export DLC configuration file
+      ansible.builtin.template:
+        src: "{{templates_path}}dlc_export_template.j2"
+        dest: "/root/dlc_export.json"
+
+    - name: Import DLC configuration if
+      ansible.builtin.shell:
+        cmd: "/opt/ibm/si/services/dlc/current/script/importLogSourceConfig.sh -i /root/dlc_export.json -e {{ dlc_export_password }}"
+
+    - name: Restart DLC service
+      ansible.builtin.service:
+          name: "dlc"
+          state: "restarted"

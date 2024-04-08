@@ -1,0 +1,58 @@
+# code: language=ansible
+
+- name: Copiar dlc rpm
+  ansible.builtin.copy:
+    src: "{{ files_dir }}{{ dlc_file }}"
+    dest: "/tmp"
+
+- name: Install DLC service 
+  ansible.builtin.yum:
+    name: "/tmp/{{ dlc_file }}"
+    state: "present"
+    disable_gpg_check: true
+
+- name: Check DLC service status
+  ansible.builtin.service_facts:
+  register: services
+
+- name: Print DLC service status
+  ansible.builtin.debug:
+    var: ansible_facts.services["dlc.service"].state
+
+- name: Open Syslog UDP port
+  ansible.builtin.firewalld:  
+    permanent: true
+    port: 514/udp
+    state: enabled
+    zone: public
+    immediate: true
+
+- name: Open Syslog TCP port
+  ansible.builtin.firewalld:  
+    permanent: true
+    port: 514/tcp
+    state: enabled
+    zone: public
+    immediate: true
+    
+- name: Forward Syslog UDP port to DLC
+  ansible.builtin.firewalld:  
+    permanent: true
+    port_forward:
+      - port: 514
+        proto: udp
+        toport: 1514
+    state: enabled
+    zone: public
+    immediate: true
+
+- name: Forward Syslog TCP port to DLC
+  ansible.builtin.firewalld:  
+    permanent: true        
+    port_forward:
+      - port: 514
+        proto: tcp
+        toport: 1514
+    state: enabled
+    zone: public
+    immediate: true

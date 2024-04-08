@@ -1,0 +1,38 @@
+# code: language=ansible
+
+- name: Update DLC protocol
+  ansible.builtin.lineinfile:
+    path: "/opt/ibm/si/services/dlc/conf/config.json"
+    regexp: '.*\"destination.type\"\:.*'
+    line: '        "destination.type": "TLS",'
+
+- name: Update DLC destination ip
+  ansible.builtin.lineinfile:
+    path: "/opt/ibm/si/services/dlc/conf/config.json"
+    regexp: '.*\"destination.ip\"\:.*'
+    line: '        "destination.ip": "{{ dlc_ec_ip }}",'
+
+- name: Update DLC destination port
+  ansible.builtin.lineinfile:
+    path: "/opt/ibm/si/services/dlc/conf/config.json"
+    regexp: '.*\"destination.port\"\:.*'
+    line: '        "destination.port": "{{ dlc_ec_port }}"'
+
+
+- name: Update DLC EPS
+  ansible.builtin.lineinfile:
+    path: "/opt/ibm/si/services/dlc/conf/config.json"
+    regexp: '.*\"EPS\"\:.*'
+    line: '    "EPS": {{ dlc_eps }},'
+
+- name: Enable DLC Metrics
+  ansible.builtin.lineinfile:
+    path: "/opt/ibm/si/services/dlc/conf/config.json"
+    regexp: '.*\"DLCMetricsEventsEnabled\"\:.*'
+    line: '    "DLCMetricsEventsEnabled": "true",'
+
+- name: Restart DLC service
+  ansible.builtin.service:
+      name: "dlc"
+      state: "restarted"
+

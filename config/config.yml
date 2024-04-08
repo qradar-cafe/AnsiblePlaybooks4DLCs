@@ -1,0 +1,47 @@
+# code: language=ansible
+# path where is located the software and files to be deployed into DLCs
+files_dir: "./files/"
+
+# path where are the task files uses in the playbooks
+tasks_dir: "./tasks/"
+
+# path where are the templates files uses in the playbooks
+templates_path: "./templates/"
+
+# File name of the DLC CA
+ca_file: "dlc-ca.crt"
+
+# Java file to be deployed
+java_file: "ibm-java-x86_64-sdk-8.0-8.11.bin"
+
+# DLC rpm to be installed
+dlc_file: "dlc-service-1.8.4-1.noarch.rpm"
+
+#DLC CA Password to sign certs
+dlc_ca_password: ""
+
+#DLC CA Password to sign certs
+dlc_crt_password: ""
+
+#DLC Export configuration password
+dlc_export_password: ""
+
+# DLC certificate DN for signature request
+Country_Code: "ES"
+State_Province_Name: "Madrid"
+City_Name: "Madrid"
+Organization_Name: "QRadar Cafe"
+Organization_Unit_Name: "Monografico"
+
+# DLC default Event Collector
+dlc_ec_ip: ""
+dlc_ec_port: "32500"
+dlc_eps: 5000
+
+# QRadar Console
+qradar_ip: ""
+qradar_port: "443"
+qradar_token: ""
+
+# QRadar DLC log source
+dlc_logsource_id: 11165
